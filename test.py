@@ -43,7 +43,6 @@ with st.sidebar:
 
 # --- NỘI DUNG CHÍNH ---
 st.title("NosaAssistant")
-st.info("Hệ thống đang sử dụng sức mạnh của RTX 5060 Ti 16GB.")
 
 client = OpenAI(base_url=host, api_key="ollama")
 

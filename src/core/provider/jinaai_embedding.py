@@ -1,15 +1,16 @@
 import json 
 import requests
 import os
+from src.core.config import Config
 
 class JinaAIEmbedder:
     def __init__(self, model_name='jina-embeddings-v3', api_key=None):
-        api_key = api_key if api_key else os.getenv('JINAAI_API_KEY')
+        self.api_key = api_key or Config.JINAAI_API_KEY
         self.model_name = model_name
         self.url = "https://api.jina.ai/v1/embeddings"
         self.headers = {
             "Content-Type": "application/json",
-            "Authorization": f"Bearer {api_key}"
+            "Authorization": f"Bearer {self.api_key}"
         }
 
     def get_embedding(self, texts, task, batch_size=16):

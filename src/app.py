@@ -1,22 +1,28 @@
 import uvicorn
-from fastapi import FastAPI, HTTPException
+import os
+import shutil
+from fastapi import FastAPI, HTTPException, UploadFile, File
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
-from qdrant_client import QdrantClient
 
-from core.vector_db import QdrantManager
-from core.provider.jinaai_embedding import JinaAIEmbedder
-from core.provider.ollama_llm import OllamaProvider
+from src.core.vector_db import QdrantManager
+from src.core.provider.jinaai_embedding import JinaAIEmbedder
+from src.core.provider.ollama_llm import OllamaProvider
 from src.core.engine import RAGAnswerEngine
+from src.core.chunker import Chunker
 
 app = FastAPI(title="RAG API")
 
+UPLOAD_DIR = "uploads"
+os.makedirs(UPLOAD_DIR, exist_ok=True)
+
 embedder = JinaAIEmbedder(model_name="jina-embeddings-v3")
 llm = OllamaProvider(model_name="qwen2.5:14b-instruct-q4_K_M")
-
-db_manager = QdrantManager(collection_name='test_collection', embedder=embedder)
-
+db_manager = QdrantManager(collection_name='test_collection', 
+                           embedder=embedder,
+                           host="127.0.0.1")
 rag_engine = RAGAnswerEngine(llm=llm, db_manager=db_manager)
+chunker = Chunker()
 
 class ChatRequest(BaseModel):
     query: str
@@ -26,6 +32,32 @@ class ChatRequest(BaseModel):
 async def health_check():
     return {"status": "active", "database": "connected"}
 
+@app.post("/upload")
+async def upload_file(file: UploadFile = File(...)):
+    if not file.filename.endswith(".pdf"):
+        raise HTTPException(status_code=400, detail="Chỉ hỗ trợ định dạng PDF.")
+    
+    file_path = os.path.join(UPLOAD_DIR, file.filename)
+    
+    try:
+        with open(file_path, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+        chunks = chunker.chunking_by_pages(file_path)
+
+        db_manager.upsert_chunks(chunks)
+        return {
+            "message": f"Đã nạp thành công '{file.filename}'",
+            "pages_processed": len(chunks)
+        }
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Lỗi xử lý file: {str(e)}")
+    finally:
+        # Tùy chọn: Xóa file sau khi nạp xong để tiết kiệm bộ nhớ
+        if os.path.exists(file_path):
+            os.remove(file_path)
+
+# --- ENDPOINT CHAT ---
 @app.post("/chat")
 async def chat_endpoint(request: ChatRequest):
     try:
@@ -42,4 +74,4 @@ async def chat_endpoint(request: ChatRequest):
         raise HTTPException(status_code=500, detail=f"Internal Server Error: {str(e)}")
 
 if __name__ == "__main__":
-    uvicorn.run("src.app:app", host="0.0.0.0", port=8000, reload=True)
+    uvicorn.run("app:app", host="0.0.0.0", port=8000, reload=True)

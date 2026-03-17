@@ -1,4 +1,5 @@
 import fitz
+import os
 
 class DocumentParser:
     def __init__(self):
@@ -7,8 +8,8 @@ class DocumentParser:
     def get_raw_text_pdf(self, file_path):
         results = []
         try:
-            doc = fitz.open(self.file_path)
-            
+            abs_path = os.path.abspath(file_path)
+            doc = fitz.open(abs_path)
             for page_num, page in enumerate(doc):
                 text = page.get_text("text")
                 clean_text = " ".join(text.split())

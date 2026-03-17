@@ -8,17 +8,20 @@ class QdrantManager:
         self.client = QdrantClient(host=host, port=port)
         self.embedder = embedder
         self.collection_name = collection_name
+        self.create_collection(vector_size=1024)
 
     def create_collection(self, vector_size):
-        self.client.create_collection(
-            collection_name=self.collection_name,
-            vectors_config={
-                "dense": VectorParams(
-                    size=vector_size,
-                    distance=Distance.COSINE,
+        collections = self.client.get_collections().collections
+        exists = any(c.name == self.collection_name for c in collections)
+        if not exists:
+            print(f"Creating collection: {self.collection_name}")
+            self.client.create_collection(
+                collection_name=self.collection_name,
+                vectors_config=VectorParams(
+                        size=vector_size,
+                        distance=Distance.COSINE,
                 )
-            }
-        )
+            )
 
     def upsert_chunks(self, chunks):
         """
@@ -39,7 +42,8 @@ class QdrantManager:
                     }
                 )
             )
-        self.client.upsert(
+        print(len(points))
+        operation_info = self.client.upsert(
             collection_name=self.collection_name,
             points=points
         )
@@ -47,13 +51,13 @@ class QdrantManager:
 
     def search_chunks(self, query: str, top_k: int = 3) -> List[Dict]:
         query_vector = self.embedder.get_embedding(query, task="retrieval.query")
+        query_vector = query_vector[0]
         search_results = self.client.query_points(
             collection_name=self.collection_name,
             query=query_vector,
             limit=top_k,
             with_payload=True
-        )
-
+        ).points
         contexts = [res.payload.get("content", "") for res in search_results]
         return contexts
     

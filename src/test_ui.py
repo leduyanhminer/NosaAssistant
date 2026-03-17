@@ -1,49 +1,38 @@
 import streamlit as st
 import requests
-import json
 
-st.set_page_config(page_title="AI Engineer RAG Chat", layout="wide")
+st.set_page_config(page_title="AI Engineer RAG", layout="wide")
 
-st.title("🤖 Local RAG Assistant")
-st.markdown("---")
+# --- SIDEBAR: QUẢN LÝ FILE ---
+with st.sidebar:
+    st.header("📁 Tài liệu của bạn")
+    uploaded_file = st.file_uploader("Tải lên PDF mới", type="pdf")
+    if uploaded_file and st.button("Nạp vào hệ thống"):
+        files = {"file": (uploaded_file.name, uploaded_file.getvalue(), "application/pdf")}
+        res = requests.post("http://localhost:8000/upload", files=files)
+        if res.status_code == 200:
+            st.success("Đã nạp tài liệu!")
+        else:
+            st.error("Lỗi upload")
 
-# Cấu hình URL của FastAPI
-API_URL = "http://localhost:8000/chat"
+# --- MAIN: GIAO DIỆN CHAT ---
+st.title("💬 RAG Chatbot")
 
-# Khởi tạo lịch sử chat
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
-# Hiển thị các tin nhắn cũ
-for message in st.session_state.messages:
-    with st.chat_message(message["role"]):
-        st.markdown(message["content"])
+for msg in st.session_state.messages:
+    with st.chat_message(msg["role"]):
+        st.markdown(msg["content"])
 
-# Nhận câu hỏi từ người dùng
-if prompt := st.chat_input("Hỏi tôi về tài liệu của bạn..."):
-    # Hiển thị tin nhắn user
+if prompt := st.chat_input("Hỏi gì đó về tài liệu..."):
     st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user"):
         st.markdown(prompt)
 
-    # Gọi API và hiển thị tin nhắn Assistant (Streaming)
     with st.chat_message("assistant"):
-        response_placeholder = st.empty()
-        full_response = ""
-        
-        # Gọi FastAPI với chế độ stream
-        try:
-            # Gửi request POST tới FastAPI
-            with requests.post(API_URL, json={"query": prompt, "stream": True}, stream=True) as r:
-                for chunk in r.iter_content(chunk_size=None):
-                    if chunk:
-                        # Giải mã và cập nhật giao diện
-                        text = chunk.decode("utf-8")
-                        full_response += text
-                        response_placeholder.markdown(full_response + "▌")
-            
-            response_placeholder.markdown(full_response)
-            st.session_state.messages.append({"role": "assistant", "content": full_response})
-            
-        except Exception as e:
-            st.error(f"Lỗi kết nối API: {e}")
+        # Gọi API Chat của bạn
+        response = requests.post("http://localhost:8000/chat", json={"query": prompt, "stream": False})
+        answer = response.json().get("answer", "Lỗi rồi!")
+        st.markdown(answer)
+        st.session_state.messages.append({"role": "assistant", "content": answer})

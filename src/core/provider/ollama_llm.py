@@ -4,7 +4,7 @@ from typing import Generator, Optional
 class OllamaProvider:
     def __init__(self, model_name: str = "qwen2.5:14b-instruct-q4_K_M", base_url: Optional[str] = None):
         self.model_name = model_name
-        self.client = ollama.Client(host=base_url) if base_url else ollama
+        self.client = ollama.Client(host='http://localhost:11434')
     
     def invoke(self, system_prompt: str, user_prompt, temperature: float = 0.2) -> str:
         try:
@@ -17,7 +17,7 @@ class OllamaProvider:
                     "num_ctx": 8192 
                 }
             )
-            return response['response']
+            return response.response
         except Exception as e:
             return f"Lỗi kết nối Ollama: {str(e)}"
         

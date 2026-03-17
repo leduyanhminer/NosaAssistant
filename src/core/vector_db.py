@@ -1,13 +1,12 @@
 from qdrant_client import QdrantClient
 from qdrant_client.models import Distance, VectorParams, models, PointStruct
 from typing import List, Dict, Any
-from provider.embedding import Embedder
 import uuid
 
 class QdrantManager:
-    def __init__(self, collection_name, model, host="localhost", port=6333):
+    def __init__(self, collection_name, embedder, host="localhost", port=6333):
         self.client = QdrantClient(host=host, port=port)
-        self.embedder = Embedder(model=model)
+        self.embedder = embedder
         self.collection_name = collection_name
 
     def create_collection(self, vector_size):
@@ -26,7 +25,7 @@ class QdrantManager:
         chunks: list of dicts [{'text': '...', 'metadata': {...}}, ...]
         """
         texts = [chunk['text'] for chunk in chunks]
-        vectors = self.embedder.get_embedding(texts, "passage")
+        vectors = self.embedder.get_embedding(texts, task="retrieval.passage")
         points = []
         for i, (chunk, vector) in enumerate(zip(chunks, vectors)):
             point_id = str(uuid.uuid4())
@@ -47,7 +46,7 @@ class QdrantManager:
         print(f"✅ Đã nạp {len(points)} đoạn văn bản vào Qdrant.")
 
     def search_chunks(self, query: str, top_k: int = 3) -> List[Dict]:
-        query_vector = self.embedder.get_embedding(query, "query")
+        query_vector = self.embedder.get_embedding(query, task="retrieval.query")
         search_results = self.client.query_points(
             collection_name=self.collection_name,
             query=query_vector,

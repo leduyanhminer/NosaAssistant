@@ -1,7 +1,7 @@
 import streamlit as st
 import requests
 
-st.set_page_config(page_title="AI Engineer RAG", layout="wide")
+st.set_page_config(page_title="Nosa Assistant", layout="wide")
 
 # --- SIDEBAR: QUẢN LÝ FILE ---
 with st.sidebar:
@@ -31,7 +31,6 @@ if prompt := st.chat_input("Hỏi gì đó về tài liệu..."):
         st.markdown(prompt)
 
     with st.chat_message("assistant"):
-        # Gọi API Chat của bạn
         response = requests.post("http://localhost:8000/chat", json={"query": prompt, "stream": False})
         answer = response.json().get("answer", "Lỗi rồi!")
         st.markdown(answer)

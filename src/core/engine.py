@@ -15,7 +15,6 @@ class RAGAnswerEngine:
 
         context_str = "\n\n".join([f"- {c}" for c in contexts])
 
-
         user_msg = RAG_USER_TEMPLATE.format(
             context=context_str,
             query=user_query

@@ -30,4 +30,24 @@ class ChatMemoryManager:
     def _summarize_old_message(self):
         to_summarize = self.buffer_msg[:-self.keep_recent]
         self.buffer_msg = self.buffer_msg[-self.keep_recent:]
+        new_content_to_sum = "\n".join([f"{m.role}: {m.content}" for m in to_summarize])
+        summary_prompt = f"""
+        Bạn là bộ nhớ của AI. Hãy cập nhật bản tóm tắt hội thoại cũ bằng cách gộp thêm nội dung mới.
+        ---
+        TÓM TẮT CŨ: {self.current_summary if self.current_summary else "Chưa có."}
+        NỘI DUNG MỚI: {new_content_to_sum}
+        ---
+        YÊU CẦU: Viết bản tóm tắt mới cực kỳ súc tích, giữ lại các thực thể quan trọng. Không quá 150 từ.
+        BẢN TÓM TẮT MỚI:"""
+
+        self.current_summary = self.summarize_llm.invoke(summary_prompt)
+        print(f"\n--- [Hệ thống] Đã cập nhật tóm tắt mới: {self.current_summary[:50]}... ---\n")
+
+    def get_full_prompt_messages(self, system_instruction: str):
+        messages = [{"role": "system", "content": system_instruction}]
+        if self.current_summary:
+            messages[0]["content"] += f"\n\n Bối cảnh hội thoại trước đó: {self.current_summary}"
         
+        messages.extend([m.to_llm_dict() for m in self.buffer_msg])
+        return messages
+    

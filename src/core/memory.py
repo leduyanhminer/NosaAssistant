@@ -3,7 +3,6 @@ from pydantic import BaseModel, Field
 from typing import Optional, List, Dict
 import time
 
-
 class MessageState(BaseModel):
     role : str
     content: str
@@ -32,15 +31,20 @@ class ChatMemoryManager:
         self.buffer_msg = self.buffer_msg[-self.keep_recent:]
         new_content_to_sum = "\n".join([f"{m.role}: {m.content}" for m in to_summarize])
         summary_prompt = f"""
-        Bạn là bộ nhớ của AI. Hãy cập nhật bản tóm tắt hội thoại cũ bằng cách gộp thêm nội dung mới.
+        Bạn là hệ thống nén bộ nhớ. Hãy cập nhật bản tóm tắt cũ bằng cách gộp thêm diễn biến mới.
         ---
-        TÓM TẮT CŨ: {self.current_summary if self.current_summary else "Chưa có."}
-        NỘI DUNG MỚI: {new_content_to_sum}
+        TÓM TẮT CŨ: {self.current_summary or "Khởi đầu hội thoại."}
+        NỘI DUNG MỚI CẦN GỘP:
+        {new_content_to_sum}
         ---
-        YÊU CẦU: Viết bản tóm tắt mới cực kỳ súc tích, giữ lại các thực thể quan trọng. Không quá 150 từ.
+        YÊU CẦU:
+        1. Viết dưới dạng các ý chính hoặc đoạn văn cực ngắn.
+        2. Giữ lại tên dự án, thông số kỹ thuật, quyết định công nghệ.
+        3. KHÔNG bắt đầu bằng "Bản tóm tắt là..." hay "AI đã thảo luận...".
+        4. Ngôn ngữ: Tiếng Việt.
         BẢN TÓM TẮT MỚI:"""
 
-        self.current_summary = self.summarize_llm.invoke(summary_prompt)
+        self.current_summary = self.summarize_llm.invoke(system_prompt="", user_prompt=summary_prompt)
         print(f"\n--- [Hệ thống] Đã cập nhật tóm tắt mới: {self.current_summary[:50]}... ---\n")
 
     def get_full_prompt_messages(self, system_instruction: str):

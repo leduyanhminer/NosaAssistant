@@ -10,17 +10,25 @@ from src.core.provider.jinaai_embedding import JinaAIEmbedder
 from src.core.provider.ollama_llm import OllamaProvider
 from src.core.engine import RAGAnswerEngine
 from src.core.chunker import Chunker
+from src.core.memory import ChatMemoryManager
+from src.core.config import Config
 
 app = FastAPI(title="RAG API")
 
 UPLOAD_DIR = "uploads"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
+# summarize_llm = OllamaProvider(model_name="phi3.5:3.8b-instruct-q4_K_M", 
+#                                base_url=Config.OLLAMA_URL_2)
+llm = OllamaProvider(model_name="qwen2.5:14b-instruct-q4_K_M",
+                     base_url=Config.OLLAMA_URL)
+memory_manager = ChatMemoryManager(summarize_llm=llm, 
+                                   threshold=10, 
+                                   keep_recent=4)
 embedder = JinaAIEmbedder(model_name="jina-embeddings-v3")
-llm = OllamaProvider(model_name="qwen2.5:14b-instruct-q4_K_M")
+
 db_manager = QdrantManager(collection_name='test_collection', 
-                           embedder=embedder,
-                           host="127.0.0.1")
+                           embedder=embedder)
 rag_engine = RAGAnswerEngine(llm=llm, db_manager=db_manager)
 chunker = Chunker()
 

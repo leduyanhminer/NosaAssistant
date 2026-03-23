@@ -44,7 +44,7 @@ class ChatMemoryManager:
         4. Ngôn ngữ: Tiếng Việt.
         BẢN TÓM TẮT MỚI:"""
 
-        self.current_summary = self.summarize_llm.invoke(system_prompt="", user_prompt=summary_prompt)
+        self.current_summary = self.summarize_llm.generate_text(system_prompt="", user_prompt=summary_prompt)
         print(f"\n--- [Hệ thống] Đã cập nhật tóm tắt mới: {self.current_summary[:50]}... ---\n")
 
     def get_full_prompt_messages(self, system_instruction: str):

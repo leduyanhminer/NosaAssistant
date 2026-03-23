@@ -20,7 +20,7 @@ class RAGAnswerEngine:
             query=user_query
         )
         # print(user_msg)
-        response = self.llm.invoke(system_prompt=RAG_SYSTEM_INSTRUCTION, user_prompt=user_msg)
+        response = self.llm.generate_text(system_prompt=RAG_SYSTEM_INSTRUCTION, user_prompt=user_msg)
         return response
     
     def generate_stream_response(self, user_query: str) -> Generator:
@@ -37,5 +37,5 @@ class RAGAnswerEngine:
             query=user_query
         )
 
-        for chunk in self.llm.stream(system_prompt=RAG_SYSTEM_INSTRUCTION, user_prompt=user_msg):
+        for chunk in self.llm.generate_text_stream(system_prompt=RAG_SYSTEM_INSTRUCTION, user_prompt=user_msg):
             yield chunk

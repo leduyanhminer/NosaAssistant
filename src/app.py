@@ -8,6 +8,7 @@ from pydantic import BaseModel
 from src.core.vector_db import QdrantManager
 from src.core.provider.jinaai_embedding import JinaAIEmbedder
 from src.core.provider.ollama_llm import OllamaProvider
+from src.core.provider.openai_llm import OpenAIProvider
 from src.core.engine import RAGAnswerEngine
 from src.core.chunker import Chunker
 from src.core.memory import ChatMemoryManager
@@ -20,8 +21,9 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 # summarize_llm = OllamaProvider(model_name="phi3.5:3.8b-instruct-q4_K_M", 
 #                                base_url=Config.OLLAMA_URL_2)
-llm = OllamaProvider(model_name=Config.LLM_MODEL_NAME,
-                     base_url=Config.OLLAMA_URL)
+# llm = OllamaProvider(model_name=Config.LLM_MODEL_NAME,
+#                      base_url=Config.OLLAMA_URL)
+llm = OpenAIProvider(api_key=Config.OPENAI_API_KEY)
 memory_manager = ChatMemoryManager(summarize_llm=llm, 
                                    threshold=10, 
                                    keep_recent=4)

@@ -20,7 +20,7 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 # summarize_llm = OllamaProvider(model_name="phi3.5:3.8b-instruct-q4_K_M", 
 #                                base_url=Config.OLLAMA_URL_2)
-llm = OllamaProvider(model_name="qwen2.5:14b-instruct-q4_K_M",
+llm = OllamaProvider(model_name=Config.LLM_MODEL_NAME,
                      base_url=Config.OLLAMA_URL)
 memory_manager = ChatMemoryManager(summarize_llm=llm, 
                                    threshold=10, 

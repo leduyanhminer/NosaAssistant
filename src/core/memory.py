@@ -23,10 +23,10 @@ class ChatMemoryManager:
     def add_message(self, role: str, content: str):
         msg = MessageState(role=role, content=content)
         self.buffer_msg.append(msg)
-        if len(self.buffer) > self.threshold:
+        if len(self.buffer_msg) > self.threshold:
             self._summarize_old_message()
         
-    def _summarize_old_message(self):
+    def _summarize_old_message(self, model_name: str = "gpt-5-nano"):
         to_summarize = self.buffer_msg[:-self.keep_recent]
         self.buffer_msg = self.buffer_msg[-self.keep_recent:]
         new_content_to_sum = "\n".join([f"{m.role}: {m.content}" for m in to_summarize])
@@ -44,7 +44,7 @@ class ChatMemoryManager:
         4. Ngôn ngữ: Tiếng Việt.
         BẢN TÓM TẮT MỚI:"""
 
-        self.current_summary = self.summarize_llm.generate_text(system_prompt="", user_prompt=summary_prompt)
+        self.current_summary = self.summarize_llm.generate_text(system_prompt="", user_prompt=summary_prompt, model=model_name)
         print(f"\n--- [Hệ thống] Đã cập nhật tóm tắt mới: {self.current_summary[:50]}... ---\n")
 
     def get_full_prompt_messages(self, system_instruction: str):

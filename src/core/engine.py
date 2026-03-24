@@ -7,7 +7,7 @@ class RAGAnswerEngine:
         self.llm = llm
         self.db_manager = db_manager
 
-    def generate_response(self, user_query: str):
+    def generate_response(self, user_query: str, model_name: str = "gpt-5-nano"):
         contexts = self.db_manager.search_chunks(user_query, top_k=3)
         
         if not contexts:
@@ -20,7 +20,7 @@ class RAGAnswerEngine:
             query=user_query
         )
         # print(user_msg)
-        response = self.llm.generate_text(system_prompt=RAG_SYSTEM_INSTRUCTION, user_prompt=user_msg)
+        response = self.llm.generate_text(system_prompt=RAG_SYSTEM_INSTRUCTION, user_prompt=user_msg, model=model_name)
         return response
     
     def generate_stream_response(self, user_query: str) -> Generator:

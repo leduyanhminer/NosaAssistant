@@ -4,15 +4,18 @@ import shutil
 from fastapi import FastAPI, HTTPException, UploadFile, File
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
+import redis
 
 from src.core.vector_db import QdrantManager
 from src.core.provider.jinaai_embedding import JinaAIEmbedder
 from src.core.provider.ollama_llm import OllamaProvider
 from src.core.provider.openai_llm import OpenAIProvider
-from src.core.engine import RAGAnswerEngine
+from src.core.engine import RAGAnswerEngine, GeneralChatEngine
 from src.core.chunker import Chunker
-from src.core.memory import ChatMemoryManager
+from src.core.memory import ChatMemoryManager, SessionState
 from src.core.config import Config
+from src.core.redis import RedisManager
+from src.core.router import RouterManager
 
 app = FastAPI(title="RAG API")
 
@@ -23,19 +26,20 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 #                                base_url=Config.OLLAMA_URL_2)
 # llm = OllamaProvider(model_name=Config.LLM_MODEL_NAME,
 #                      base_url=Config.OLLAMA_URL)
-llm = OpenAIProvider(api_key=Config.OPENAI_API_KEY)
-memory_manager = ChatMemoryManager(summarize_llm=llm, 
-                                   threshold=10, 
-                                   keep_recent=4)
-embedder = JinaAIEmbedder(model_name="jina-embeddings-v3")
 
+llm = OpenAIProvider(api_key=Config.OPENAI_API_KEY)
+embedder = JinaAIEmbedder(model_name="jina-embeddings-v3")
 db_manager = QdrantManager(collection_name='test_collection', 
                            embedder=embedder)
 rag_engine = RAGAnswerEngine(llm=llm, db_manager=db_manager)
+chat_engine = GeneralChatEngine(llm=llm)
+router_manager = RouterManager(router_llm=llm)
 chunker = Chunker()
+redis_db = RedisManager()
 
 class ChatRequest(BaseModel):
     query: str
+    session_id: str
     stream: bool = False
 
 @app.get("/health")
@@ -71,13 +75,26 @@ async def upload_file(file: UploadFile = File(...)):
 @app.post("/chat")
 async def chat_endpoint(request: ChatRequest):
     try:
-        if request.stream:
+        if request.stream: # to fix
             return StreamingResponse(
                 rag_engine.generate_stream_response(request.query),
                 media_type="text/plain"
             )
         
-        answer = rag_engine.generate_response(request.query)
+        session_state = redis_db.get_session(request.session_id) or SessionState(session_id=request.session_id)
+        memory_manager = ChatMemoryManager(session_state=session_state, summarize_llm=llm, threshold=10, keep_recent=4)
+        memory_manager.add_message(role='user', content=request.query)
+        router_results = router_manager.route(session_state=session_state, model_name='gpt-4o-mini')
+        print(router_results)
+        if router_results['intent'] == 'RAG' and router_results['confidence'] > 0.7:
+            answer = rag_engine.generate_response(session_state=session_state)
+        else:
+            answer = chat_engine.generate_response(session_state=session_state)
+
+        memory_manager.add_message(role='assistant', content=answer)
+        print(1)
+        redis_db.save_session(request.session_id, session_state)
+        print(2)
         return {"answer": answer}
 
     except Exception as e:

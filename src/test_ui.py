@@ -31,7 +31,7 @@ if prompt := st.chat_input("Hỏi gì đó về tài liệu..."):
         st.markdown(prompt)
 
     with st.chat_message("assistant"):
-        response = requests.post("http://localhost:8000/chat", json={"query": prompt, "stream": False})
+        response = requests.post("http://localhost:8000/chat", json={"query": prompt, "session_id": '1', "stream": False})
         answer = response.json().get("answer", "Lỗi rồi!")
         st.markdown(answer)
         st.session_state.messages.append({"role": "assistant", "content": answer})

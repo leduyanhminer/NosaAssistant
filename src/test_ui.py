@@ -9,7 +9,8 @@ with st.sidebar:
     uploaded_file = st.file_uploader("Tải lên PDF mới", type="pdf")
     if uploaded_file and st.button("Nạp vào hệ thống"):
         files = {"file": (uploaded_file.name, uploaded_file.getvalue(), "application/pdf")}
-        res = requests.post("http://localhost:8000/upload", files=files)
+        payload_params = {"session_id": "abc1"}
+        res = requests.post("http://localhost:8000/upload", files=files, params=payload_params)
         if res.status_code == 200:
             st.success("Đã nạp tài liệu!")
         else:
@@ -31,7 +32,7 @@ if prompt := st.chat_input("Hỏi gì đó về tài liệu..."):
         st.markdown(prompt)
 
     with st.chat_message("assistant"):
-        response = requests.post("http://localhost:8000/chat", json={"query": prompt, "session_id": '1', "stream": False})
+        response = requests.post("http://localhost:8000/chat", json={"query": prompt, "session_id": 'abc1', "stream": False})
         answer = response.json().get("answer", "Lỗi rồi!")
         st.markdown(answer)
         st.session_state.messages.append({"role": "assistant", "content": answer})

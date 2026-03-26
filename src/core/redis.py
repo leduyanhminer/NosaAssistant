@@ -12,10 +12,18 @@ class RedisManager:
             decode_responses=True
         )
 
-    def save_session(self, session_id: str, state: SessionState, ttl: int = 3600):
-        """Lưu SessionState xuống Redis (mặc định hết hạn sau 1h)"""
-        key = f"session:{session_id}"
-        self.client.set(key, state.model_dump_json(), ex=ttl)
+    def save_session(self, session_id: str, state: SessionState, ttl: Optional[int] = None):
+        try:
+            key = f"session:{session_id}"
+            json_data = state.model_dump_json()
+            
+            if ttl is not None:
+                self.client.set(key, json_data, ex=ttl)
+            else:
+                self.client.set(key, json_data)
+                
+        except redis.ConnectionError:
+            print("❌ Lỗi kết nối Redis")
 
     def get_session(self, session_id: str) -> Optional[SessionState]:
         """Lấy dữ liệu và ép kiểu ngược lại thành Object Pydantic"""

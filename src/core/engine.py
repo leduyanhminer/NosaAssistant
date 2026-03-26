@@ -9,15 +9,16 @@ class RAGAnswerEngine:
         self.db_manager = db_manager
 
     def generate_response(self, session_state: SessionState, model_name: str = "gpt-4o-mini"):
+        session_id = session_state.session_id
         new_query = self.rewrite_query(session_state, model_name=model_name)
-        contexts = self.db_manager.search_chunks(new_query, top_k=3)    
+        contexts = self.db_manager.search_chunks(session_id, new_query, top_k=3)    
         user_msg = session_state.buffer_msg[-1].content
         recent_msg = "\n".join([f"{m.role}: {m.content}" for m in session_state.buffer_msg[:-1]])
         current_summary = session_state.current_summary
-        print('current_summary', current_summary)
-        print('recent_msg', recent_msg)
-        print('user_msg', user_msg)
-        print("new_query:", new_query)
+        print('current_summary: ', current_summary)
+        print('recent_msg: ', recent_msg)
+        print('user_msg: ', user_msg)
+        print("new_query: ", new_query)
         # print(contexts)
         if not contexts:
             return "Xin lỗi, tôi không tìm thấy tài liệu liên quan."
@@ -30,8 +31,7 @@ class RAGAnswerEngine:
             retrieved_docs=context_str,
             user_msg=user_msg
         )
-        # response = self.llm.generate_text(system_prompt=RAG_SYSTEM_PROMPT, user_prompt=user_prompt, model=model_name)
-        response = "1"
+        response = self.llm.generate_text(system_prompt=RAG_SYSTEM_PROMPT, user_prompt=user_prompt, model=model_name)
         return response
     
     # def generate_stream_response(self, user_query: str) -> Generator: #to fix
@@ -76,11 +76,10 @@ class GeneralChatEngine:
             recent_msg=recent_msg,
             user_msg=user_msg
         )
-        print('current_summary', current_summary)
-        print('recent_msg', recent_msg)
-        print('user_msg', user_msg)
-        # response = self.llm.generate_text(system_prompt=CHAT_SYSTEM_PROMPT, user_prompt=user_prompt, model=model_name)
-        response = "2"
+        print('current_summary: ', current_summary)
+        print('recent_msg: ', recent_msg)
+        print('user_msg: ', user_msg)
+        response = self.llm.generate_text(system_prompt=CHAT_SYSTEM_PROMPT, user_prompt=user_prompt, model=model_name)
         return response
     
     # def generate_stream_response(self, user_query: str) -> Generator:

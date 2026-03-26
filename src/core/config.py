@@ -10,3 +10,4 @@ class Config:
     OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
     # LLM_MODEL_NAME = "qwen2.5:14b-instruct-q4_K_M"
     # LLM_MODEL_NAME = "llama3.2"
+    EMBEDDING_SIZE = 1024

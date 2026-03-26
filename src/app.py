@@ -1,7 +1,7 @@
 import uvicorn
 import os
 import shutil
-from fastapi import FastAPI, HTTPException, UploadFile, File
+from fastapi import FastAPI, HTTPException, UploadFile, File, Header
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 import redis
@@ -29,8 +29,9 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 llm = OpenAIProvider(api_key=Config.OPENAI_API_KEY)
 embedder = JinaAIEmbedder(model_name="jina-embeddings-v3")
-db_manager = QdrantManager(collection_name='test_collection', 
+db_manager = QdrantManager(collection_name='my_collection', 
                            embedder=embedder)
+db_manager.create_collection()
 rag_engine = RAGAnswerEngine(llm=llm, db_manager=db_manager)
 chat_engine = GeneralChatEngine(llm=llm)
 router_manager = RouterManager(router_llm=llm)
@@ -47,7 +48,7 @@ async def health_check():
     return {"status": "active", "database": "connected"}
 
 @app.post("/upload")
-async def upload_file(file: UploadFile = File(...)):
+async def upload_file(session_id: str, file: UploadFile = File(...)):
     if not file.filename.endswith(".pdf"):
         raise HTTPException(status_code=400, detail="Chỉ hỗ trợ định dạng PDF.")
     
@@ -58,7 +59,7 @@ async def upload_file(file: UploadFile = File(...)):
             shutil.copyfileobj(file.file, buffer)
         chunks = chunker.chunking_by_pages(file_path)
 
-        db_manager.upsert_chunks(chunks)
+        db_manager.upsert_chunks(session_id=session_id, chunks=chunks)
         return {
             "message": f"Đã nạp thành công '{file.filename}'",
             "pages_processed": len(chunks)
@@ -90,11 +91,8 @@ async def chat_endpoint(request: ChatRequest):
             answer = rag_engine.generate_response(session_state=session_state)
         else:
             answer = chat_engine.generate_response(session_state=session_state)
-
         memory_manager.add_message(role='assistant', content=answer)
-        print(1)
         redis_db.save_session(request.session_id, session_state)
-        print(2)
         return {"answer": answer}
 
     except Exception as e:

@@ -15,6 +15,7 @@ class SessionState(BaseModel):
     session_id: str
     buffer_msg: List[MessageState] = []
     current_summary: str = ""
+    updated_at: float = Field(default_factory=time.time)
     
 class ChatMemoryManager:
     def __init__(self, session_state: SessionState, summarize_llm, threshold=10, keep_recent=4):

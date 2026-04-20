@@ -6,7 +6,7 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 import redis
 
-from src.core.vector_db import QdrantManager
+from core.db.vector_db import QdrantManager
 from src.core.provider.jinaai_embedding import JinaAIEmbedder
 from src.core.provider.ollama_llm import OllamaProvider
 from src.core.provider.openai_llm import OpenAIProvider
@@ -14,8 +14,9 @@ from src.core.engine import RAGAnswerEngine, GeneralChatEngine
 from src.core.chunker import Chunker
 from src.core.memory import ChatMemoryManager, SessionState
 from src.core.config import Config
-from src.core.redis import RedisManager
+from core.db.redis import RedisManager
 from src.core.router import RouterManager
+from core.db.mongo import MongoSessionStorage
 
 app = FastAPI(title="RAG API")
 
@@ -37,6 +38,7 @@ chat_engine = GeneralChatEngine(llm=llm)
 router_manager = RouterManager(router_llm=llm)
 chunker = Chunker()
 redis_db = RedisManager()
+mongo_db = MongoSessionStorage()
 
 class ChatRequest(BaseModel):
     query: str
@@ -81,8 +83,14 @@ async def chat_endpoint(request: ChatRequest):
                 rag_engine.generate_stream_response(request.query),
                 media_type="text/plain"
             )
-        
-        session_state = redis_db.get_session(request.session_id) or SessionState(session_id=request.session_id)
+        session_id = request.session_id
+        session_state = redis_db.get_session(session_id)
+        if not session_state:
+            session_state = mongo_db.load(session_id)
+            if session_state:
+                redis_db.save_session(session_id, session_state)
+            else:
+                session_state = SessionState(session_id=session_id)
         memory_manager = ChatMemoryManager(session_state=session_state, summarize_llm=llm, threshold=10, keep_recent=4)
         memory_manager.add_message(role='user', content=request.query)
         router_results = router_manager.route(session_state=session_state, model_name='gpt-4o-mini')
